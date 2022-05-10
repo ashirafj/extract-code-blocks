@@ -7,22 +7,22 @@ from extractor.blocks import Block
 from extractor.nodes import Node
 
 
-def extract(code: str, keep_indent: bool = False) -> List[Block]:
+def extract(code: str, keep_indent: bool = False, debug_print: bool = False) -> List[Block]:
   tree = __get_tree(code)
-  print(__get_formatted_tree_str(tree))
-  print()
+  if debug_print:
+    print(__get_formatted_tree_str(tree))
+    print()
 
   all_nodes = __iter_child_nodes(tree)
-  print(*all_nodes, sep="\n")
-  print()
+  if debug_print:
+    for node in all_nodes:
+      print(node)
+    print()
 
   blocks = __extract_blocks(all_nodes, code, keep_indent)
   return blocks
 
-def __iter_child_nodes(tree, indent=1) -> List[Node]:
-  if indent == 1:
-    print(tree)
-  
+def __iter_child_nodes(tree: ast.AST, indent: int = 0) -> List[Node]:
   nodes = []
 
   for name, field in ast.iter_fields(tree):

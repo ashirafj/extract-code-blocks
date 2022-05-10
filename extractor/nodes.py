@@ -9,7 +9,6 @@ class Node:
     self.field_name = type(field).__name__
     self.indent = indent
     self.lineno = lineno
-    print(self)
   
   def __str__(self) -> str:
     indent_str = "    " * self.indent
