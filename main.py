@@ -1,8 +1,8 @@
 from extractor import extractor
 
 if __name__ == "__main__":
-  filename = "samples/sample.py"
-  with open(filename, "r") as f:
+  filepath = input()
+  with open(filepath, "r") as f:
     code = f.read()
   blocks = extractor.extract(code)
 
