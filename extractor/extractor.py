@@ -3,23 +3,21 @@ from typing import List
 
 import astor
 
-from extractor.code_block import CodeBlock
+from extractor.blocks import Block
 from extractor.nodes import Node
 
 
-def extract(code: str) -> List[CodeBlock]:
+def extract(code: str) -> List[Block]:
   tree = __get_tree(code)
   print(__get_formatted_tree_str(tree))
   print()
 
-  restored_code = __get_code(tree)
-  print(restored_code)
+  all_nodes = __iter_child_nodes(tree)
+  print(*all_nodes, sep="\n")
   print()
 
-  all_nodes = __iter_child_nodes(tree)
-  print(all_nodes)
-
-  return [ CodeBlock(code, "") ]
+  blocks = __extract_blocks(all_nodes, code)
+  return blocks
 
 def __iter_child_nodes(tree, indent=1) -> List[Node]:
   if indent == 1:
@@ -38,13 +36,44 @@ def __iter_child_nodes(tree, indent=1) -> List[Node]:
   return nodes
 
 def __iter_inner_child_nodes(name, field, indent) -> List[Node]:
-  if name == "body":
+  if "lineno" in field._attributes:
     lineno = field.lineno
-    # print(indent_str + name + ": " + str(type(field)) + ", Line: " + str(lineno))
     return [Node(name, field, indent, lineno)] + __iter_child_nodes(field, indent + 1)
   else:
-    # print(indent_str + name + ": " + str(type(field)))
     return [Node(name, field, indent)] + __iter_child_nodes(field, indent + 1)
+
+def __extract_blocks(nodes: List[Node], code: str) -> List[Block]:
+  blocks = []
+  for pos in range(len(nodes)):
+    if __is_block(nodes[pos]):
+      blocks.append(__extract_block(nodes, pos, code))
+  return blocks
+
+def __extract_block(nodes: List[Node], pos: int, code: str) -> Block:
+  base_node = nodes[pos]
+  block_nodes = [base_node]
+  for i in range(pos+1, len(nodes)):
+    node = nodes[i]
+    if node.indent > base_node.indent:
+      block_nodes.append(node)
+    else:
+      break
+  correspond_code = __get_correspond_code(block_nodes, code)
+  return Block(base_node.field_name, block_nodes, correspond_code)
+
+def __get_correspond_code(nodes: List[Node], code: str) -> str:
+  linenos = [ node.lineno for node in nodes if node.lineno is not None ]
+  start_lineno = min(linenos) - 1
+  end_lineno = max(linenos) - 1
+  code_lines = code.split("\n")
+  correspond_code_lines = code_lines[start_lineno:end_lineno+1]
+  correspond_code = "\n".join(correspond_code_lines)
+  return correspond_code
+
+def __is_block(node: Node) -> bool:
+  BLOCKS = [ "FunctionDef", "AsyncFunctionDef", "ClassDef", "For", "AsyncFor", "While", "If", "With", "AsyncWith", "Try" ]
+  # "body" excludes some improper code blocks like "elif"
+  return node.field_name in BLOCKS and node.name == "body"
 
 def __get_tree(code: str) -> ast.AST:
   tree = ast.parse(code)
@@ -52,13 +81,11 @@ def __get_tree(code: str) -> ast.AST:
   walker.walk(tree)
   return tree
 
-def __get_code(tree: ast.AST) -> str:
-  return astor.to_source(tree)
-
 def __get_tree_str(tree: ast.AST) -> str:
   return ast.dump(tree, include_attributes=True, annotate_fields=True)
 
 def __get_formatted_tree_str(tree: ast.AST) -> str:
+  # TODO: refactoring
   tree_str = __get_tree_str(tree)
   INDENT_SIZE = 4
   current_indent_size = 0
@@ -66,11 +93,8 @@ def __get_formatted_tree_str(tree: ast.AST) -> str:
   pos = 0
   while pos < len(tree_str):
     char = tree_str[pos]
-    previous_pos = pos - 1
     next_pos = pos + 1
-    is_first = pos == 0
     is_final = next_pos == len(tree_str)
-    previous_char = tree_str[previous_pos] if not is_first else None
     next_char = tree_str[next_pos] if not is_final else None
 
     if (char == "[" and next_char != "]"):
