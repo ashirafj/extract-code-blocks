@@ -7,7 +7,7 @@ from extractor.blocks import Block
 from extractor.nodes import Node
 
 
-def extract(code: str) -> List[Block]:
+def extract(code: str, keep_indent: bool = False) -> List[Block]:
   tree = __get_tree(code)
   print(__get_formatted_tree_str(tree))
   print()
@@ -16,7 +16,7 @@ def extract(code: str) -> List[Block]:
   print(*all_nodes, sep="\n")
   print()
 
-  blocks = __extract_blocks(all_nodes, code)
+  blocks = __extract_blocks(all_nodes, code, keep_indent)
   return blocks
 
 def __iter_child_nodes(tree, indent=1) -> List[Node]:
@@ -42,14 +42,14 @@ def __iter_inner_child_nodes(name, field, indent) -> List[Node]:
   else:
     return [Node(name, field, indent)] + __iter_child_nodes(field, indent + 1)
 
-def __extract_blocks(nodes: List[Node], code: str) -> List[Block]:
+def __extract_blocks(nodes: List[Node], code: str, keep_indent: bool) -> List[Block]:
   blocks = []
   for pos in range(len(nodes)):
     if __is_block(nodes[pos]):
-      blocks.append(__extract_block(nodes, pos, code))
+      blocks.append(__extract_block(nodes, pos, code, keep_indent))
   return blocks
 
-def __extract_block(nodes: List[Node], pos: int, code: str) -> Block:
+def __extract_block(nodes: List[Node], pos: int, code: str, keep_indent: bool) -> Block:
   base_node = nodes[pos]
   block_nodes = [base_node]
   for i in range(pos+1, len(nodes)):
@@ -58,16 +58,23 @@ def __extract_block(nodes: List[Node], pos: int, code: str) -> Block:
       block_nodes.append(node)
     else:
       break
-  correspond_code = __get_correspond_code(block_nodes, code)
+  correspond_code = __get_correspond_code(block_nodes, code, keep_indent)
   return Block(base_node.field_name, block_nodes, correspond_code)
 
-def __get_correspond_code(nodes: List[Node], code: str) -> str:
+def __get_correspond_code(nodes: List[Node], code: str, keep_indent: bool) -> str:
   linenos = [ node.lineno for node in nodes if node.lineno is not None ]
   start_lineno = min(linenos) - 1
   end_lineno = max(linenos) - 1
   code_lines = code.split("\n")
   correspond_code_lines = code_lines[start_lineno:end_lineno+1]
-  correspond_code = "\n".join(correspond_code_lines)
+
+  if keep_indent:
+    correspond_code = "\n".join(correspond_code_lines)
+  else:    
+    first_line = correspond_code_lines[0]
+    indent_size = len(first_line) - len(first_line.lstrip())
+    correspond_code_lines = [ line[indent_size:] for line in correspond_code_lines ]
+    correspond_code = "\n".join(correspond_code_lines)
   return correspond_code
 
 def __is_block(node: Node) -> bool:
