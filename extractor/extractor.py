@@ -4,6 +4,7 @@ from typing import List
 import astor
 
 from extractor.code_block import CodeBlock
+from extractor.nodes import Node
 
 
 def extract(code: str) -> List[CodeBlock]:
@@ -15,7 +16,35 @@ def extract(code: str) -> List[CodeBlock]:
   print(restored_code)
   print()
 
+  all_nodes = __iter_child_nodes(tree)
+  print(all_nodes)
+
   return [ CodeBlock(code, "") ]
+
+def __iter_child_nodes(tree, indent=1) -> List[Node]:
+  if indent == 1:
+    print(tree)
+  
+  nodes = []
+
+  for name, field in ast.iter_fields(tree):
+    if isinstance(field, ast.AST):
+      nodes += __iter_inner_child_nodes(name, field, indent)
+    elif isinstance(field, list):
+      for item in field:
+        if isinstance(item, ast.AST):
+          nodes += __iter_inner_child_nodes(name, item, indent)
+  
+  return nodes
+
+def __iter_inner_child_nodes(name, field, indent) -> List[Node]:
+  if name == "body":
+    lineno = field.lineno
+    # print(indent_str + name + ": " + str(type(field)) + ", Line: " + str(lineno))
+    return [Node(name, field, indent, lineno)] + __iter_child_nodes(field, indent + 1)
+  else:
+    # print(indent_str + name + ": " + str(type(field)))
+    return [Node(name, field, indent)] + __iter_child_nodes(field, indent + 1)
 
 def __get_tree(code: str) -> ast.AST:
   tree = ast.parse(code)
@@ -31,7 +60,7 @@ def __get_tree_str(tree: ast.AST) -> str:
 
 def __get_formatted_tree_str(tree: ast.AST) -> str:
   tree_str = __get_tree_str(tree)
-  INDENT_SIZE = 2
+  INDENT_SIZE = 4
   current_indent_size = 0
   result_str = ""
   pos = 0
