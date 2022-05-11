@@ -1,5 +1,5 @@
 import ast
-from typing import List
+from typing import List, Tuple
 
 import astor
 
@@ -44,7 +44,7 @@ def extract(code: str, keep_indent: bool = False, debug_print: bool = False) -> 
   
   Returns:
     A list of code blocks.
-    Each code block contains type of the code block and original source code of the code block.
+    Each code block contains type of the code block, original source code of the code block, and line numbers representing the range.
   """
   tree = __get_tree(code)
   if debug_print:
@@ -96,15 +96,19 @@ def __extract_block(nodes: List[Node], pos: int, code: str, keep_indent: bool) -
       block_nodes.append(node)
     else:
       break
-  correspond_code = __get_correspond_code(block_nodes, code, keep_indent)
-  return Block(base_node.type, correspond_code)
+  start_line, end_line = __get_range(block_nodes) # 0-indexed
+  correspond_code = __get_correspond_code(code, keep_indent, start_line, end_line)
+  return Block(base_node.type, correspond_code, start_line + 1, end_line + 1) # 1-indexed
 
-def __get_correspond_code(nodes: List[Node], code: str, keep_indent: bool) -> str:
+def __get_range(nodes: List[Node]) -> Tuple[int, int]:
   linenos = [ node.lineno for node in nodes if node.lineno is not None ]
-  start_lineno = min(linenos) - 1
-  end_lineno = max(linenos) - 1
+  start_line = min(linenos) - 1
+  end_line = max(linenos) - 1
+  return (start_line, end_line)
+
+def __get_correspond_code(code: str, keep_indent: bool, start_line: int, end_line: int) -> str:
   code_lines = code.split("\n")
-  correspond_code_lines = code_lines[start_lineno:end_lineno+1]
+  correspond_code_lines = code_lines[start_line:end_line+1]
 
   if keep_indent:
     correspond_code = "\n".join(correspond_code_lines)

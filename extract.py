@@ -9,7 +9,7 @@ def main():
   args = parser.parse_args()
   code = args.input.read()
   blocks = extractor.extract(code)
-  output_data = [ { "type": block.type, "code": block.code } for block in blocks ]
+  output_data = [ { "type": block.type, "code": block.code, "start": block.start_line, "end": block.end_line } for block in blocks ]
   json.dump(output_data, args.output)
 
 if __name__ == "__main__":
