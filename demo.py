@@ -40,6 +40,6 @@ if __name__ == "__main__":
   blocks = extractor.extract(code, debug_print=True)
 
   for block in blocks:
-    print("Type:", block.block_type)
+    print("Type:", block.type)
     print(block.code)
     print()

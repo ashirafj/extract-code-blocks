@@ -44,7 +44,7 @@ def extract(code: str, keep_indent: bool = False, debug_print: bool = False) -> 
   
   Returns:
     A list of code blocks.
-    Each code block contains type of the code block, original source code of the code block, and inner nodes.
+    Each code block contains type of the code block and original source code of the code block.
   """
   tree = __get_tree(code)
   if debug_print:
@@ -97,7 +97,7 @@ def __extract_block(nodes: List[Node], pos: int, code: str, keep_indent: bool) -
     else:
       break
   correspond_code = __get_correspond_code(block_nodes, code, keep_indent)
-  return Block(base_node.type, block_nodes, correspond_code)
+  return Block(base_node.type, correspond_code)
 
 def __get_correspond_code(nodes: List[Node], code: str, keep_indent: bool) -> str:
   linenos = [ node.lineno for node in nodes if node.lineno is not None ]

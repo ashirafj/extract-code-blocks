@@ -7,7 +7,7 @@ if __name__ == "__main__":
   blocks = extractor.extract(code)
 
   for block in blocks:
-    print("Type:", block.block_type)
+    print("Type:", block.type)
     print(block.code)
     print()
   
