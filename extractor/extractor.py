@@ -8,6 +8,44 @@ from extractor.nodes import Node
 
 
 def extract(code: str, keep_indent: bool = False, debug_print: bool = False) -> List[Block]:
+  """
+  Extract all code blocks from Python source code based on abstract syntax tree.
+  
+  Note that this function extracts all inner code of a code block.
+  It means that the lower code block appears in all higher code blocks.
+
+  Example:
+    Input:
+    "
+      if condition1:
+        if condition2:
+          if condition3:
+            do_something()
+    "
+    Output:
+    ["
+      if condition1:
+        if condition2:
+          if condition3:
+            do_something()
+    ","
+      if condition2:
+        if condition3:
+          do_something()
+    ","
+      if condition3:
+        do_something()
+    "]
+
+  Params:
+    code: Target source code to extract code blocks
+    keep_indent: Whether to keep original indent depth in the result's code blocks. If False, the indent in the code blocks is reset to zero. Default is False.
+    debug_print: Whether to output abstract syntax tree's nodes. Default is False.
+  
+  Returns:
+    A list of code blocks.
+    Each code block contains type of the code block, original source code of the code block, and inner nodes.
+  """
   tree = __get_tree(code)
   if debug_print:
     print(__get_formatted_tree_str(tree))
@@ -59,7 +97,7 @@ def __extract_block(nodes: List[Node], pos: int, code: str, keep_indent: bool) -
     else:
       break
   correspond_code = __get_correspond_code(block_nodes, code, keep_indent)
-  return Block(base_node.field_name, block_nodes, correspond_code)
+  return Block(base_node.type, block_nodes, correspond_code)
 
 def __get_correspond_code(nodes: List[Node], code: str, keep_indent: bool) -> str:
   linenos = [ node.lineno for node in nodes if node.lineno is not None ]
@@ -80,7 +118,7 @@ def __get_correspond_code(nodes: List[Node], code: str, keep_indent: bool) -> st
 def __is_block(node: Node) -> bool:
   BLOCKS = [ "FunctionDef", "AsyncFunctionDef", "ClassDef", "For", "AsyncFor", "While", "If", "With", "AsyncWith", "Try" ]
   # "body" excludes some improper code blocks like "elif"
-  return node.field_name in BLOCKS and node.name == "body"
+  return node.type in BLOCKS and node.name == "body"
 
 def __get_tree(code: str) -> ast.AST:
   tree = ast.parse(code)
